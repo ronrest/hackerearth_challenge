@@ -1,4 +1,7 @@
 """
+################################################################################
+#                               NOTES ABOUT DATA
+################################################################################
 Running the train.py file assumes you have already created the pickle
 files. See the following procedure for how to do this:
 
@@ -9,6 +12,78 @@ files. See the following procedure for how to do this:
        save the processed pickle file.
     2. Edit the PATHS section of this file to reflect where you
        saved the pickle file.
+
+################################################################################
+#                                 NOTES ABOUT MODEL
+################################################################################
+I (Ronny) have created a python class caled `ClassifierModel` that already
+includes most of the boilerplate code necessary for creating a tensorflow
+project that will go through all the training process.
+
+The main thing that needs to be done is to experiment with different model
+architectures. To create a new model architecture, simply do the following:
+
+1.  create your own function with the following API:
+
+        my_logits_function(X, n_classes, is_training)
+
+    X = a tensorflow placeholder tensor that will be passed to your function.
+        This will contain the current batch of images for you to perform a
+        forward pass of the neural network.
+
+    n_classes = an integer specifying the number of output classes for
+        the final output layer
+
+    is_training = Another tensorflow placeholder that conatains a boolean value.
+        This tells your architecture if the model is currently in training mode
+        (True), or evaluation/production/prediction mode (False).
+
+
+    The function should return a tensorflow tensor of your final output layer
+    (the logits just before performing a softmax operation).
+
+2.  Create an instance of `ClassifierModel` that passes the function you created
+    above as the first argument.
+
+    The full API is as follows:
+
+        mymodel = ClassifierModel(my_logits_function, in_shape=[32,32,3], n_classes=25, snapshot_file="path/to/snapshot_file")
+
+    my_logits_function = the function you created above that returns the logits
+
+    in_shape = The dimensions of the input images [n_rows,n_cols,n_channels]
+
+    n_classes = The number of output classes to clsasify
+
+    snapshot_file = Name of file to save the model weights to.
+
+
+3.  Call the train method:
+
+        mymodel.train(data, n_epochs=30, batch_size=128, print_every=100)
+
+    data = the data dictionary contianing "X_train", "Y_train", "X_valid", "Y_valid", "X_test"
+
+    n_epochs = The number of epochs to train for.
+
+    batch_size = How big each mini-batch should be
+
+    print_every = Controls how often it gives feedback in between epochs.
+        How many steps should elapse before giving feedback?
+
+################################################################################
+#                                 THINGS TO TRY
+################################################################################
+1.  Different architectures
+2.  Different image sizes (control this in the data.py file to control how big
+    the images will be in the  pickled data)
+3.  Data augmentation steps.
+    - this can be done with either built in tensorflow functions for image
+      processing, and apply these in your logits_function.
+    - Or, grater range of image processing steps could be performed by
+      editing the train() method in the ClassifierModel class to do image
+      processing on the batch of images before they get passed to your
+      logits_function.
 """
 from __future__ import print_function, division, unicode_literals
 import tensorflow as tf
