@@ -14,12 +14,7 @@ train_files = glob.glob(os.path.join(datadir, "train_img", pattern))
 test_files = glob.glob(os.path.join(datadir, "test_img", pattern))
 
 data = {}
-data["X_train"] = np.zeros([n_samples]+img_shape+[n_channels])
-data["Y_train"] = []
-data["X_valid"] = []
-data["Y_valid"] = []
-data["X_test"] = []
-data["Y_test"] = []
+# Data keys will be  "X_train", "Y_train", "X_valid", "Y_valid", "X_test", "Y_test"
 
 for dataset_name, file_list in [("train", train_files), ("test", test_files)]:
     n_samples = len(file_list)
