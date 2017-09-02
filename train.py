@@ -17,8 +17,17 @@ import pickle
 import os
 import time
 
-from data import id2label, label2id, pickle2obj
+from data import id2label, label2id, pickle2obj, maybe_make_pardir
 from viz import train_curves
+
+# TODO: allow alpha to be entered as an argument for training
+# TODO: save and restore evals and global_epoch
+
+# SETTINGS
+n_valid = 1000          # Number of samples to set aside for validation set
+batch_size = 32
+in_shape = [32,32,3]    # Image dimensions [rows, cols, n_chanels] for model input
+
 
 # PATHS
 pickle_file = "/path/to/data_pickle_file.pickle"  # Filepath to the pickled data
@@ -26,14 +35,11 @@ pickle_file = "data.pickle"
 snapshot_file = "snapshots/snapshot.chk"
 plot_file = "plots/training_plot.png" # Saves a plot of the training curves
 
-# TODO: allow alpha to be entered as an argument for training
-# TODO: save and restore evals and global_epoch
+# Ensure the necessary file structures exist
+maybe_make_pardir(snapshot_file)
+maybe_make_pardir(plot_file)
 
-# DIMENSIONS
-batch_size = 32
-in_shape = [32,32,3]    # Image dimensions [rows, cols, n_chanels] for model input
 n_classes = len(id2label)
-
 print("Number of classes = ", n_classes) # 25
 
 
@@ -54,9 +60,6 @@ def pretty_time(t):
 # DATA - Load the pickle file created in the data.py file
 # Data keys will be  "X_train", "Y_train", "X_valid", "Y_valid", "X_test"
 data = pickle2obj(pickle_file)
-
-
-
 
 
 
