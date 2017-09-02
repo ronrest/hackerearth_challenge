@@ -3,7 +3,7 @@ import numpy as np
 # ==============================================================================
 #                                          GRID_OF_SAMPLE_IMAGES_FROM_EACH_CLASS
 # ==============================================================================
-def grid_of_sample_images_from_each_class(X, Y, num_per_class=5, seed=None):
+def sample_images_from_each_class(X, Y, num_per_class=5, seed=None):
     """
     Given a batch of images (stored as a numpy array), and an array of labels,
     It creates a grid of images (randomly sampled), such that:
