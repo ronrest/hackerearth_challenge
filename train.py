@@ -61,6 +61,23 @@ def pretty_time(t):
 # Data keys will be  "X_train", "Y_train", "X_valid", "Y_valid", "X_test"
 data = pickle2obj(pickle_file)
 
+# Create Validation data (from first `n_valid` samples of training set)
+print("Creating validation split")
+# TODO: Check that the distributions of labels has been preserved in split.
+#       Maybe shuffle before splitting
+data["X_valid"] = data["X_train"][:n_valid]
+data["Y_valid"] = data["Y_train"][:n_valid]
+data["X_train"] = data["X_train"][n_valid:]
+data["Y_train"] = data["Y_train"][n_valid:]
+
+# Information about data shapes
+print("DATA SHAPES")
+print("- X_train: ", data["X_train"].shape) # - X_train:  (2215, 32, 32, 3)
+print("- X_valid: ", data["X_valid"].shape) # - X_valid:  (1000, 32, 32, 3)
+print("- X_test : ", data["X_test"].shape)  # - X_test :  (1732, 32, 32, 3)
+print("- Y_train: ", data["Y_train"].shape) # - Y_train:  (2215,)
+print("- Y_valid: ", data["Y_valid"].shape) # - Y_valid:  (1000,)
+
 
 
 # ##############################################################################
