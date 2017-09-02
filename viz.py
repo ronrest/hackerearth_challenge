@@ -1,4 +1,6 @@
 import numpy as np
+import matplotlib.pyplot as plt
+import seaborn as sns
 
 # ==============================================================================
 #                                          GRID_OF_SAMPLE_IMAGES_FROM_EACH_CLASS
@@ -66,3 +68,24 @@ def sample_images_from_each_class(X, Y, num_per_class=5, seed=None):
             grid_array[row:row+im_height, col:col+im_width] = X[sample_index]
 
     return grid_array
+
+# ==============================================================================
+#                                                                   TRAIN_CURVES
+# ==============================================================================
+def train_curves(train, valid, saveto=None, label="Accuracy over time"):
+    """ Plots the training curves. If `saveto` is specified, it saves the
+        the plot image to a file.
+    """
+    fig, ax = plt.subplots(figsize=(6, 4))
+    fig.suptitle("Accuracies over time", fontsize=15)
+    ax.plot(train, color="#FF4F40",  label="train")
+    ax.plot(valid, color="#307EC7",  label="eval")
+    ax.set_xlabel("epoch")
+    ax.set_ylabel("accuracy")
+    ax.legend(loc="lower right", title="", frameon=False,  fontsize=8)
+    if saveto is None:
+        plt.show()
+    else:
+        fig.savefig(saveto)
+
+
