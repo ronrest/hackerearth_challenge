@@ -21,6 +21,10 @@ To do this, scroll down to the very bottom and  modify the following settings
                 dictionary object saved on your computer to make it quicker
                 to load the data during training.
 
+                The dictionary object stored contains the following keys:
+                "X_train", "Y_train", "X_test"
+                And each of those contains a numpy array.
+
 - img_shape =   The 2D dimensions to reshape all the images to.
                 eg: [32,32]
                 Start with something small like [32,32], to experiment with,
