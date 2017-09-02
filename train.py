@@ -51,4 +51,6 @@ print("X_train: ", data["X_train"].shape) # ('X_train: ', (2215, 32, 32, 3))
 print("X_valid: ", data["X_valid"].shape) # ('X_valid: ', (1000, 32, 32, 3))
 print("X_test : ", data["X_test"].shape)  # ('X_test : ', (1732, 32, 32, 3))
 
+# TODO: Pickle the processed data to make it faster to load
+# NOTE: Use protocol=2 when pickling
 
