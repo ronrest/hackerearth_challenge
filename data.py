@@ -58,6 +58,7 @@ def maybe_make_pardir(file):
 # ==============================================================================
 def obj2pickle(obj, filepath):
     """ Saves a python object as a binary pickle file to the desired filepath"""
+    maybe_make_pardir(filepath) # Ensure parent director exists
     with open(filepath, mode="wb") as fileObj:
         pickle.dump(obj, fileObj, protocol=2)
 
