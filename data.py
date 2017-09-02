@@ -106,7 +106,7 @@ def create_data_pickle(datadir, pickle_file, label2id, img_shape=[32,32]):
     train_labels = np.genfromtxt(labels_file, delimiter=",", skip_header=1, dtype=str)
     train_files = train_labels[:,0]
     train_labels = train_labels[:,1]
-    data["Y_train"] = np.array(list(map(lambda label: label2id[label], train_labels))).astype(np.int8)
+    data["Y_train"] = np.array(list(map(lambda label: label2id[label], train_labels))).astype(np.uint8)
     data["Y_train"] = data["Y_train"].reshape(-1) # ensure dimension is [n_batches]
 
     # Test files
@@ -125,7 +125,7 @@ def create_data_pickle(datadir, pickle_file, label2id, img_shape=[32,32]):
         # file_list = file_list[:n_samples]
 
         # Populate each image at a time into the dataset
-        data["X_"+dataset_name] = np.zeros([n_samples]+img_shape+[n_channels], dtype=np.int8)
+        data["X_"+dataset_name] = np.zeros([n_samples]+img_shape+[n_channels], dtype=np.uint8)
         for i, filename in enumerate(file_list):
             img_file = os.path.join(datadir, dataset_name+"_img", filename+".png")
             img = scipy.misc.imread(img_file)
@@ -156,9 +156,9 @@ def create_data_pickle(datadir, pickle_file, label2id, img_shape=[32,32]):
     print("- Y_train: ", data["Y_train"].shape) # 'Y_train: ', (3215,)
 
     print("- DATA TYPES")
-    print("- X_train: ", data["X_train"].dtype) # 'X_train: ', int8
-    print("- X_test : ", data["X_test"].dtype)  # 'X_test : ', int8
-    print("- Y_train: ", data["Y_train"].dtype) # 'X_train: ', int8
+    print("- X_train: ", data["X_train"].dtype) # 'X_train: ', uint8
+    print("- X_test : ", data["X_test"].dtype)  # 'X_test : ', uint8
+    print("- Y_train: ", data["Y_train"].dtype) # 'X_train: ', uint8
 
     # Save the pickle file
     print("- Pickling the data to file")
