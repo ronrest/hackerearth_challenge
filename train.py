@@ -3,15 +3,8 @@
 #                               NOTES ABOUT DATA
 ################################################################################
 Running the train.py file assumes you have already created the pickle
-files. See the following procedure for how to do this:
-
-    Procedure:
-    1. Create data pickle file by running the data.py file.
-       Make sure you edit the filepaths at the bottom of that file
-       to match where you stored the raw data, and where you want to
-       save the processed pickle file.
-    2. Edit the PATHS section of this file to reflect where you
-       saved the pickle file.
+file that contains the processed images. See the docstring at the top
+of the data.py file for instructions on how to create the pickle file.
 
 ################################################################################
 #                                 NOTES ABOUT MODEL
@@ -84,6 +77,7 @@ architectures. To create a new model architecture, simply do the following:
       editing the train() method in the ClassifierModel class to do image
       processing on the batch of images before they get passed to your
       logits_function.
+################################################################################
 """
 from __future__ import print_function, division, unicode_literals
 import tensorflow as tf
@@ -145,7 +139,7 @@ print("- Y_valid: ", data["Y_valid"].shape) # - Y_valid:  (1000,)
 
 
 # ##############################################################################
-#                                                     CREATE MODEL ARCHITECTURES
+#                                                 CREATE THE MODEL ARCHITECTURES
 # ##############################################################################
 def my_architectureA(X, n_classes, is_training):
     # Initializers
@@ -172,7 +166,6 @@ def my_architectureA(X, n_classes, is_training):
 #                                                         CREATE AND TRAIN MODEL
 # ##############################################################################
 # Create and Train Model
-# BOOKMARK: Tweak the training schedule
 model = ClassifierModel(my_architectureA, in_shape=in_shape, n_classes=n_classes, snapshot_file=snapshot_file)
 model.train(data, n_epochs=30, batch_size=128, print_every=1000)
 
