@@ -1,14 +1,42 @@
 """
-            FUNCTIONS FOR PROCESSING THE DATA
-
+################################################################################
+             USING THIS FILE FOR PROCESSING THE DATA
+################################################################################
 If you run this file directly from the command line, it will generate the
-pickled data. Modify the settings at the very botton of this file under
-    if __name__ == '__main__'
-to configure how the pickled files get generated.
+pickled data necessary to start training the models.
 
-Otherwise, you can import the indivial variables and functions to other python
-files.
+To do this, scroll down to the very bottom and  modify the following settings
 
+- datadir = the file path to the root directory of the hackerearth data.
+            It should be the directory containing:
+
+            test_img/
+            train_img/
+            sample_submission.csv
+            test.csv
+            train.csv
+
+- pickle_file = specify a filepath to save the processed images as.
+                This will be a "pickle" file, which is just a python
+                dictionary object saved on your computer to make it quicker
+                to load the data during training.
+
+- img_shape =   The 2D dimensions to reshape all the images to.
+                eg: [32,32]
+                Start with something small like [32,32], to experiment with,
+                then only move to something bigger if none of the models
+                you try are performing well enough in terms of accuracy.
+
+
+################################################################################
+                       OTHER USES FOR THIS FILE
+################################################################################
+This file contains useful functions for processing files which are useful for
+the other python files. Simply import the function you want using:
+
+    from data import some_function
+
+################################################################################
 """
 from __future__ import print_function, unicode_literals
 import os
