@@ -76,28 +76,28 @@ def pickle2obj(file):
 # ==============================================================================
 #                                                             CREATE_DATA_PICKLE
 # ==============================================================================
-def create_data_pickle(datadir, pickle_file, label2id, img_shape=[32,32], n_valid=1000):
+def create_data_pickle(datadir, pickle_file, label2id, img_shape=[32,32]):
     """ Given the root directory that contains the raw data, it
         saves a pickle file that contains a python dictionary
         with the following keys:
 
-            "X_train", "Y_train", "X_valid", "Y_valid", "X_test"
+            "X_train", "Y_train", "X_test"
 
-        The "X_train", "X_valid", and "X_test" items contain numpy
+        The "X_train" and "X_test" items contain numpy
         arrays storing the images with the following dimensions:
 
             [n_batch, img_rows, img_cols, n_channels]
 
-        The "Y_train", Y_valid" items are numpy arrays containing
+        The "Y_train" item is a numpy array containing
         the integer ids for the labels, in the following dimensions:
 
-            [n_batch, 1]
+            [n_batch]
     """
     print("CREATING DATA PICKLES")
     n_channels = 3      # Number of channels to use
 
     # DATA
-    # Data keys will be  "X_train", "Y_train", "X_valid", "Y_valid", "X_test"
+    # Data keys will be  "X_train", "Y_train", "X_test"
     data = {}
 
     # Train files and labels
@@ -107,7 +107,7 @@ def create_data_pickle(datadir, pickle_file, label2id, img_shape=[32,32], n_vali
     train_files = train_labels[:,0]
     train_labels = train_labels[:,1]
     data["Y_train"] = np.array(list(map(lambda label: label2id[label], train_labels))).astype(np.int8)
-    data["Y_train"] = data["Y_train"].reshape(-1, 1) # reshape to column vector
+    data["Y_train"] = data["Y_train"].reshape(-1) # ensure dimension is [n_batches]
 
     # Test files
     print("- Extracting test filenames")
@@ -138,30 +138,27 @@ def create_data_pickle(datadir, pickle_file, label2id, img_shape=[32,32], n_vali
             # Add the processed image to the array
             data["X_"+dataset_name][i] = img
 
-    # Create Validation data (from first `n_valid` samples of training set)
-    print("- Creating validation split")
-    # TODO: Check that the distributions of labels has been preserved in split.
-    #       Maybe shuffle before splitting
-    data["X_valid"] = data["X_train"][:n_valid]
-    data["Y_valid"] = data["Y_train"][:n_valid]
-    data["X_train"] = data["X_train"][n_valid:]
-    data["Y_train"] = data["Y_train"][n_valid:]
+    # # Create Validation data (from first `n_valid` samples of training set)
+    # print("- Creating validation split")
+    # # TODO: Check that the distributions of labels has been preserved in split.
+    # #       Maybe shuffle before splitting
+    # data["X_valid"] = data["X_train"][:n_valid]
+    # data["Y_valid"] = data["Y_train"][:n_valid]
+    # data["X_train"] = data["X_train"][n_valid:]
+    # data["Y_train"] = data["Y_train"][n_valid:]
+    #
 
-
-    # Information about data shapes
+    # Information about the data
+    print("- DATA KEYS: ", data.keys())
     print("- DATA SHAPES")
-    print("- X_train: ", data["X_train"].shape) # 'X_train: ', (2215, 32, 32, 3)
-    print("- X_valid: ", data["X_valid"].shape) # 'X_valid: ', (1000, 32, 32, 3)
+    print("- X_train: ", data["X_train"].shape) # 'X_train: ', (3215,, 32, 32, 3)
     print("- X_test : ", data["X_test"].shape)  # 'X_test : ', (1732, 32, 32, 3)
-    print("- Y_train: ", data["Y_train"].shape) # 'X_train: ', (2215,)
-    print("- Y_valid: ", data["Y_valid"].shape) # 'X_valid: ', (1000,)
+    print("- Y_train: ", data["Y_train"].shape) # 'Y_train: ', (3215,)
 
     print("- DATA TYPES")
     print("- X_train: ", data["X_train"].dtype) # 'X_train: ', int8
-    print("- X_valid: ", data["X_valid"].dtype) # 'X_valid: ', int8
     print("- X_test : ", data["X_test"].dtype)  # 'X_test : ', int8
     print("- Y_train: ", data["Y_train"].dtype) # 'X_train: ', int8
-    print("- Y_valid: ", data["Y_valid"].dtype) # 'X_valid: ', int8
 
     # Save the pickle file
     print("- Pickling the data to file")
@@ -175,8 +172,6 @@ if __name__ == '__main__':
     pickle_file = "/path/to/data_pickle_file.pickle"
     img_shape = [32,32] # Shape to resize the images to
     n_channels = 3      # Number of channels to use
-    n_valid = 1000      # Number of samples to set aside for validation
 
     # Create the pickled data
-    create_data_pickle(datadir, pickle_file, label2id=label2id,
-        img_shape=img_shape, n_valid=n_valid)
+    create_data_pickle(datadir, pickle_file, label2id=label2id, img_shape=img_shape)
