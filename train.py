@@ -8,7 +8,7 @@ import numpy as np
 datadir = "/path/to/root/dir"
 pattern = "*.png"
 img_shape = [32,32] # Shape to resize the images to
-n_channels = 3      # Number of channels to use # TODO: implement converting to greyscale
+n_channels = 3      # Number of channels to use
 n_valid = 1000       # Number of samples to set aside for validation
 
 
