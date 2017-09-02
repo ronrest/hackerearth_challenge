@@ -1,3 +1,15 @@
+"""
+Running the train.py file assumes you have already created the pickle
+files. See the following procedure for how to do this:
+
+    Procedure:
+    1. Create data pickle file by running the data.py file.
+       Make sure you edit the filepaths at the bottom of that file
+       to match where you stored the raw data, and where you want to
+       save the processed pickle file.
+    2. Edit the SETTINGS section of this file to reflect where you
+       saved the pickle file.
+"""
 from __future__ import print_function, division, unicode_literals
 import os
 import glob
