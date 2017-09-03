@@ -147,19 +147,29 @@ print("- Y_valid: ", data["Y_valid"].shape) # - Y_valid:  (1000,)
 # ##############################################################################
 def my_architectureA(X, n_classes, is_training):
     # Initializers
-    he_init = tf.contrib.keras.initializers.he_normal() # He et al 2015 initialization
+    he_init = tf.contrib.keras.initializers.he_normal() # He et al initialization
     xavier_init = tf.contrib.keras.initializers.glorot_normal()
+    relu = tf.nn.relu
+    dropout = 0.2
 
+    # PREPROCESS INPUTS
     # Scale images to be 0-1
     x = tf.div(X, 255., name="scale")
 
-    # Convolutional layers
-    x = tf.layers.conv2d(x, filters=8, kernel_size=3, strides=2, padding='same', activation=tf.nn.relu, kernel_initializer=he_init)
-    x = tf.layers.conv2d(x, filters=16, kernel_size=3, strides=2, padding='same', activation=tf.nn.relu, kernel_initializer=he_init)
-    x = tf.layers.conv2d(x, filters=32, kernel_size=3, strides=2, padding='same', activation=tf.nn.relu, kernel_initializer=he_init)
-    # dropout = tf.cond(is_training, lambda: tf.constant(0.5), lambda: tf.constant(0.0))
+    # CONVOLUTIONAL LAYERS
+    # Conv1
+    x = tf.layers.conv2d(x, filters=8, kernel_size=3, strides=2, padding='same', activation=relu, kernel_initializer=he_init)
+    x = tf.layers.dropout(x,rate=dropout,training=is_training)
 
-    # Fully Connected Layers
+    # Conv2
+    x = tf.layers.conv2d(x, filters=16, kernel_size=3, strides=2, padding='same', activation=relu, kernel_initializer=he_init)
+    x = tf.layers.dropout(x,rate=dropout,training=is_training)
+
+    # Conv3
+    x = tf.layers.conv2d(x, filters=32, kernel_size=3, strides=2, padding='same', activation=relu, kernel_initializer=he_init)
+    x = tf.layers.dropout(x,rate=dropout,training=is_training)
+
+    # FULLY CONNECTED LAYERS
     x = tf.contrib.layers.flatten(x)
     logits = tf.layers.dense(x, units=n_classes, activation=None, kernel_initializer=xavier_init)
 
@@ -171,6 +181,6 @@ def my_architectureA(X, n_classes, is_training):
 # ##############################################################################
 # Create and Train Model
 model = ClassifierModel(my_architectureA, in_shape=in_shape, n_classes=n_classes, snapshot_file=snapshot_file)
-model.train(data, alpha=0.01, n_epochs=30, batch_size=128, print_every=1000)
+model.train(data, alpha=0.01, n_epochs=30, batch_size=32, print_every=10)
 
 print("DONE TRAINING")
