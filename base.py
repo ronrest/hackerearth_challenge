@@ -60,7 +60,11 @@ class ClassifierModel(object):
             # Loss, Optimizer and trainstep
             self.loss = tf.reduce_mean(tf.nn.sparse_softmax_cross_entropy_with_logits(logits=self.logits, labels=self.Y, name="loss"))
             self.optimizer = tf.train.AdamOptimizer(self.alpha, name="optimizer")
-            self.trainstep = self.optimizer.minimize(self.loss, name="trainstep")
+
+            # Handle batch normalization
+            self.update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
+            with tf.control_dependencies(self.update_ops):
+                self.trainstep = self.optimizer.minimize(self.loss, name="trainstep")
 
             # Saver (for saving snapshots)
             self.saver = tf.train.Saver(name="saver")
