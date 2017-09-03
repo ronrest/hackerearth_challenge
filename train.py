@@ -65,6 +65,8 @@ architectures. To create a new model architecture, simply do the following:
 
     print_every = Controls how often it gives feedback in between epochs.
         How many steps should elapse before giving feedback?
+        Set this to `None` if you only want it to print out feedback
+        after each epoch,but nothing in between.
 
 ################################################################################
 #                                 THINGS TO TRY
