@@ -50,7 +50,7 @@ class ClassifierModel(object):
             self.X = tf.placeholder(tf.float32, shape=[None] + in_shape, name="X") # [batch, rows, cols, chanels]
             self.Y = tf.placeholder(tf.int32, shape=[None], name="Y") # [batch]
             self.alpha = tf.placeholder_with_default(0.001, shape=None, name="alpha")
-            self.is_training = tf.placeholder_with_default(False, shape=None, name="is_training")
+            self.is_training = tf.placeholder_with_default(False, shape=(), name="is_training")
 
             # Body
             # self.logits = self.body(self.X, n_classes, self.is_training)
@@ -119,7 +119,7 @@ class ClassifierModel(object):
     # ==========================================================================
     #                                                                      TRAIN
     # ==========================================================================
-    def train(self, data, n_epochs, batch_size=32, print_every=100):
+    def train(self, data, n_epochs, alpha=0.001, batch_size=32, print_every=10):
         """Trains the model, for n_epochs given a dictionary of data"""
         n_samples = len(data["X_train"])               # Num training samples
         n_batches = int(np.ceil(n_samples/batch_size)) # Num batches per epoch
@@ -143,7 +143,7 @@ class ClassifierModel(object):
                     for i in range(n_batches):
                         Xbatch = data["X_train"][batch_size*i: batch_size*(i+1)]
                         Ybatch = data["Y_train"][batch_size*i: batch_size*(i+1)]
-                        feed_dict = {self.X:Xbatch, self.Y:Ybatch, self.alpha:0.01, self.is_training:True}
+                        feed_dict = {self.X:Xbatch, self.Y:Ybatch, self.alpha:alpha, self.is_training:True}
                         loss, _ = sess.run([self.loss, self.trainstep], feed_dict=feed_dict)
 
                         # Print feedback every so often

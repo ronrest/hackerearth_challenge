@@ -53,7 +53,9 @@ architectures. To create a new model architecture, simply do the following:
 
 3.  Call the train method:
 
-        mymodel.train(data, n_epochs=30, batch_size=128, print_every=100)
+        mymodel.train(data, alpha=0.01, n_epochs=30, batch_size=128, print_every=10)
+
+    alpha = learning rate for training
 
     data = the data dictionary contianing "X_train", "Y_train", "X_valid", "Y_valid", "X_test"
 
@@ -167,6 +169,6 @@ def my_architectureA(X, n_classes, is_training):
 # ##############################################################################
 # Create and Train Model
 model = ClassifierModel(my_architectureA, in_shape=in_shape, n_classes=n_classes, snapshot_file=snapshot_file)
-model.train(data, n_epochs=30, batch_size=128, print_every=1000)
+model.train(data, alpha=0.01, n_epochs=30, batch_size=128, print_every=1000)
 
 print("DONE TRAINING")
