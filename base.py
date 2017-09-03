@@ -151,7 +151,7 @@ class ClassifierModel(object):
                         loss, _ = sess.run([self.loss, self.trainstep], feed_dict=feed_dict)
 
                         # Print feedback every so often
-                        if i%print_every==0:
+                        if print_every is not None and (i+1)%print_every==0:
                             print("{}    Batch_loss: {}".format(pretty_time(time.time()-t0), loss))
 
                     # Save parameters after each epoch
