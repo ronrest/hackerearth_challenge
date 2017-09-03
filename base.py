@@ -136,7 +136,7 @@ class ClassifierModel(object):
                 # TODO: Use global epoch
                 for epoch in range(1, n_epochs+1):
                     self.global_epoch += 1
-                    print("="*70, "\nEPOCH {}/{} (GLOBAL_EPOCH: {})".format(epoch, n_epochs, self.global_epoch),"\n"+("="*70))
+                    print("="*70, "\nEPOCH {}/{} (GLOBAL_EPOCH: {})        ELAPSED TIME: {}".format(epoch, n_epochs, self.global_epoch, pretty_time(time.time()-t0)),"\n"+("="*70))
 
                     # Shuffle the data
                     permutation = list(np.random.permutation(n_samples))
@@ -166,7 +166,7 @@ class ClassifierModel(object):
                     self.evals["valid_loss"].append(valid_loss)
 
                     # Print evaluations
-                    s = "\nTR ACC: {: 3.3f} VA ACC: {: 3.3f} TR LOSS: {: 3.5f} VA LOSS: {: 3.5f}\n"
+                    s = "TR ACC: {: 3.3f} VA ACC: {: 3.3f} TR LOSS: {: 3.5f} VA LOSS: {: 3.5f}\n"
                     print(s.format(train_acc, valid_acc, train_loss, valid_loss))
 
             except KeyboardInterrupt:
