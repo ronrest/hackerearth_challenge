@@ -108,7 +108,7 @@ def pickle2obj(file):
 # ==============================================================================
 #                                                             CREATE_DATA_PICKLE
 # ==============================================================================
-def create_data_pickle(datadir, pickle_file, label2id, img_shape=[32,32]):
+def create_data_pickle(datadir, pickle_file, id2label, img_shape=[32,32]):
     """ Given the root directory that contains the raw data, it
         saves a pickle file that contains a python dictionary
         with the following keys:
@@ -131,6 +131,11 @@ def create_data_pickle(datadir, pickle_file, label2id, img_shape=[32,32]):
     # DATA
     # Data keys will be  "X_train", "Y_train", "X_test"
     data = {}
+
+    # Label and id mappings
+    data["id2label"] = id2label
+    data["label2id"] = {val:id for id,val in enumerate(id2label)}
+    data["n_classes"] = len(id2label)
 
     # Train files and labels
     print("- Extracting train filenames and labels")
@@ -202,8 +207,8 @@ if __name__ == '__main__':
     # SETTINGS
     datadir = "/path/to/root/dir"
     pickle_file = "/path/to/data_pickle_file.pickle"
-    img_shape = [32,32] # Shape to resize the images to
+    img_shape = [64,64] # Shape to resize the images to
     n_channels = 3      # Number of channels to use
 
     # Create the pickled data
-    create_data_pickle(datadir, pickle_file, label2id=label2id, img_shape=img_shape)
+    create_data_pickle(datadir, pickle_file, id2label=id2label, img_shape=img_shape)
