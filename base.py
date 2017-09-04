@@ -1,12 +1,13 @@
 """"
-Simply contains the ClassifierModel class. Which contains all the
-boilerplate code necessary to Create a tensoerlfow graph, and training
+Contains the ClassifierModel class. Which contains all the
+boilerplate code necessary to Create a tensorlfow graph, and training
 operations.
 
-The important thing to create is a function that takes in the input images
-and returns the output logits.
+Also includes the create_and_train_model() convenience function that
+automates many of the useful steps for a full model creation, and
+training pipeline.
 
-See the docstring in train.py for how this is done.
+See the docstring in train.py for how to make use of this in training a model.
 """
 import tensorflow as tf
 import numpy as np

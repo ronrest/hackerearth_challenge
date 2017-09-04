@@ -18,7 +18,10 @@ architectures. To create a new model architecture, simply do the following:
 
 1.  create your own function with the following API:
 
-        my_logits_function(X, n_classes, is_training)
+        my_logits_function(X, n_classes, is_training, regularizer=None)
+
+    NOTE: You can call the function whatever you want, as long as the arguments
+    all conform to the same API.
 
     X = a tensorflow placeholder tensor that will be passed to your function.
         This will contain the current batch of images for you to perform a
@@ -31,42 +34,65 @@ architectures. To create a new model architecture, simply do the following:
         This tells your architecture if the model is currently in training mode
         (True), or evaluation/production/prediction mode (False).
 
+    regularizer = A tensorflow regularizer object that is passed to your
+        function.
+            NOTE: this object is only passed to your function if
+            you declare an L2 value in the `create_and_train_model()`
+            function mentioned below (if no L2 value is used, then
+            no regularizer object will be passed to your function,
+            which is why a default value of None needs to be included in
+            the API)
 
+    RETURN:
     The function should return a tensorflow tensor of your final output layer
     (the logits just before performing a softmax operation).
 
-2.  Create an instance of `ClassifierModel` that passes the function you created
-    above as the first argument.
+2. Call the `create_and_train_model()` function:
 
-    The full API is as follows:
-
-        mymodel = ClassifierModel(my_logits_function, in_shape=[32,32,3], n_classes=25, snapshot_file="path/to/snapshot_file")
-
-    my_logits_function = the function you created above that returns the logits
-
-    in_shape = The dimensions of the input images [n_rows,n_cols,n_channels]
-
-    n_classes = The number of output classes to clsasify
-
-    snapshot_file = Name of file to save the model weights to.
+        create_and_train_model(
+            model_name="myModelA",
+            logits_func=my_logits_function,
+            data=data,
+            alpha=0.01,
+            n_epochs=20,
+            batch_size=32,
+            print_every=10,
+            overwrite=False,
+            l2=None)
 
 
-3.  Call the train method:
-
-        mymodel.train(data, alpha=0.01, n_epochs=30, batch_size=128, print_every=10)
-
-    alpha = learning rate for training
-
-    data = the data dictionary contianing "X_train", "Y_train", "X_valid", "Y_valid", "X_test"
-
-    n_epochs = The number of epochs to train for.
-
-    batch_size = How big each mini-batch should be
-
-    print_every = Controls how often it gives feedback in between epochs.
-        How many steps should elapse before giving feedback?
+    The important things to modify are:
+    - model_name = A name to give your model. NOTE: Treat any slight changes
+        in parameters as completely new models.
+        This name, will create a subdirectory inside the "models" directory.
+        - Here, the model's weights will be saved in snapshot files.
+        - an "evals" file will be saved here to which contains information
+          about the history of its performance over time.
+        - An image containing how the model performed on training and validation
+          data after each epoch will be saved here.
+    - logits_function = the function you created above that returns the logits
+    - alpha = the learning rate
+    - n_epochs = the number of epochs to run training for
+    - batch_size = Size of the minibatches
+    - print_every = Controls how often it gives feedback in between epochs.
         Set this to `None` if you only want it to print out feedback
         after each epoch,but nothing in between.
+    - overwrite = If set to True, and it encounters a model with the same
+        name already saved, then it will delete EVERYTHING from the previous
+        model, and train this model from scratch.
+
+        If set to False, and it encounters a previously saved model with the
+        same name, then it will try to continue training from where the
+        previous model left off. This will only work if the architecture is
+        exactly the same as the previously saved model.
+    - l2 = Se this to None if you are not going to use regularization.
+        Otherwise, set it to some float, that specifies the amount of L2
+        regularization to apply to your model.
+
+        NOTE: This does not automatically apply regularization. It simply
+        passes a tensorflow regularizer object to your logits function.
+        you will need to actually manually specify which layers you want to
+        apply that regularizer to in your architecture.
 
 ################################################################################
 #                                 THINGS TO TRY
@@ -90,9 +116,9 @@ import pickle
 import os
 import time
 
-from data import id2label, label2id, pickle2obj, maybe_make_pardir
+from data import id2label, label2id, pickle2obj, obj2pickle, maybe_make_pardir
 from viz import train_curves
-from base import ClassifierModel
+from base import ClassifierModel, create_and_train_model
 
 # TODO: allow alpha to be entered as an argument for training
 # TODO: save and restore evals and global_epoch
@@ -106,12 +132,6 @@ in_shape = [32,32,3]    # Image dimensions [rows, cols, n_chanels] for model inp
 # PATHS
 pickle_file = "/path/to/data_pickle_file.pickle"  # Filepath to the pickled data
 pickle_file = "data.pickle"
-snapshot_file = "snapshots/snapshot.chk"
-plot_file = "plots/training_plot.png" # Saves a plot of the training curves
-
-# Ensure the necessary file structures exist
-maybe_make_pardir(snapshot_file)
-maybe_make_pardir(plot_file)
 
 n_classes = len(id2label)
 print("Number of classes = ", n_classes) # 25
@@ -145,7 +165,7 @@ print("- Y_valid: ", data["Y_valid"].shape) # - Y_valid:  (1000,)
 # ##############################################################################
 #                                                 CREATE THE MODEL ARCHITECTURES
 # ##############################################################################
-def my_architectureA(X, n_classes, is_training):
+def my_architectureA(X, n_classes, is_training, regularizer=None):
     # Initializers
     he_init = tf.contrib.keras.initializers.he_normal() # He et al initialization
     xavier_init = tf.contrib.keras.initializers.glorot_normal()
@@ -175,12 +195,4 @@ def my_architectureA(X, n_classes, is_training):
 
     return logits
 
-
-# ##############################################################################
-#                                                         CREATE AND TRAIN MODEL
-# ##############################################################################
-# Create and Train Model
-model = ClassifierModel(my_architectureA, in_shape=in_shape, n_classes=n_classes, snapshot_file=snapshot_file)
-model.train(data, alpha=0.01, n_epochs=30, batch_size=32, print_every=10)
-
-print("DONE TRAINING")
+create_and_train_model("modelA", logits_func=my_architectureA, data=data, alpha=0.01, n_epochs=20, batch_size=32, print_every=10, overwrite=True, l2=None)
