@@ -11,7 +11,10 @@ See the docstring in train.py for how this is done.
 import tensorflow as tf
 import numpy as np
 import os
+import shutil
 import time
+from data import maybe_make_pardir, pickle2obj, obj2pickle
+from viz import train_curves
 
 # ==============================================================================
 #                                                                    PRETTY_TIME
@@ -28,8 +31,8 @@ def pretty_time(t):
 #                                                          CLASSIFIER MODEL BASE
 # ##############################################################################
 class ClassifierModel(object):
-    def __init__(self, logits_func, in_shape, n_classes, snapshot_file):
-        """ Initializes a Base Classifier Class
+    def __init__(self, logits_func, in_shape, n_classes, snapshot_file, l2=None):
+        """ Initializes a Classifier Class
             in_shape: [rows, cols, channels]
             n_classes: (int)
             snapshot_file: (str) filepath to save snapshots to
@@ -43,6 +46,10 @@ class ClassifierModel(object):
         self.in_shape = in_shape
         self.n_classes = n_classes
         self.global_epoch = 0
+        if l2 is None:
+            l2_scale = 0.0
+        else:
+            l2_scale = l2
 
         self.graph = tf.Graph()
         with self.graph.as_default():
@@ -51,14 +58,30 @@ class ClassifierModel(object):
             self.Y = tf.placeholder(tf.int32, shape=[None], name="Y") # [batch]
             self.alpha = tf.placeholder_with_default(0.001, shape=None, name="alpha")
             self.is_training = tf.placeholder_with_default(False, shape=(), name="is_training")
+            self.l2_scale = tf.placeholder_with_default(l2_scale, shape=(), name="l2_scale")
+
+            self.regularizer = tf.contrib.layers.l2_regularizer(scale=self.l2_scale)
 
             # Body
             # self.logits = self.body(self.X, n_classes, self.is_training)
-            self.logits = logits_func(self.X, n_classes, self.is_training)
+            if l2 is None:
+                self.logits = logits_func(self.X, n_classes, self.is_training)
+            else:
+                self.logits = logits_func(self.X, n_classes=n_classes, is_training=self.is_training, regularizer=self.regularizer)
             _, self.preds = tf.nn.top_k(self.logits, k=1)
 
-            # Loss, Optimizer and trainstep
+            # LOSS, OPTIMIZER AND TRAINSTEP
+            # Calculate loss, adding regularization losses to the total loss
             self.loss = tf.reduce_mean(tf.nn.sparse_softmax_cross_entropy_with_logits(logits=self.logits, labels=self.Y, name="loss"))
+            # reg_losses = tf.get_collection(tf.GraphKeys.REGULARIZATION_LOSSES)
+            # self.loss += (self.l2_scale * sum(reg_losses))
+
+            # TODO: Check that this is the proper way to use regularization
+            if l2 is not None:
+                reg_variables = tf.get_collection(tf.GraphKeys.REGULARIZATION_LOSSES)
+                reg_loss = tf.contrib.layers.apply_regularization(self.regularizer, reg_variables)
+                self.loss += reg_loss
+
             self.optimizer = tf.train.AdamOptimizer(self.alpha, name="optimizer")
 
             # Handle batch normalization
@@ -123,7 +146,7 @@ class ClassifierModel(object):
     # ==========================================================================
     #                                                                      TRAIN
     # ==========================================================================
-    def train(self, data, n_epochs, alpha=0.001, batch_size=32, print_every=10):
+    def train(self, data, n_epochs, alpha=0.001, batch_size=32, print_every=10, l2=None):
         """Trains the model, for n_epochs given a dictionary of data"""
         n_samples = len(data["X_train"])               # Num training samples
         n_batches = int(np.ceil(n_samples/batch_size)) # Num batches per epoch
