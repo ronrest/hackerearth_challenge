@@ -241,3 +241,50 @@ class ClassifierModel(object):
         accuracy = (preds.squeeze() == Y.squeeze()).mean()*100
         loss = loss / n_samples
         return accuracy, loss
+
+
+# ##############################################################################
+#                                                         CREATE AND TRAIN MODEL
+# ##############################################################################
+def create_and_train_model(model_name, logits_func, data, alpha=0.01, l2=None, n_epochs=30, batch_size=128, print_every=None, overwrite=False):
+    # Create and Train Model
+    snapshot_file = os.path.join("models", model_name, "snapshots/snapshot.chk")
+    plot_file = os.path.join("models", model_name, "training_plot.png")
+    evals_file = os.path.join("models", model_name, "evals.pickle")
+
+    # Check if the model already exists.
+    if os.path.exists(model_name):
+        template = ("#"*70) +"\n"+(" "*30)+"IMPORTANT!\n"+ ("#"*70)+"\nModel with this name already exists.\n{}\n"+("#"*70)
+        if overwrite:
+            print(template.format("Completely overwriting (deleting) the directory associated with the previous model"))
+            shutil.rmtree(model_name)
+        else:
+            print(template.format("Attempting to re-use existing files"))
+
+    # Ensure the necessary file structures exist
+    maybe_make_pardir(snapshot_file)
+    maybe_make_pardir(plot_file)
+    maybe_make_pardir(evals_file)
+
+    # Create model object
+    in_shape = list(data["X_train"].shape[1:])
+    n_classes = len(data["id2label"])
+    model = ClassifierModel(logits_func, in_shape=in_shape, n_classes=n_classes, snapshot_file=snapshot_file, l2=l2)
+
+    # Load the previsously saved evals
+    if os.path.exists(evals_file):
+        print("relaoding evals data")
+        model.evals = pickle2obj(evals_file)
+        model.global_epoch = model.evals["global_epoch"]
+
+    # Train the model
+    model.train(data, alpha=alpha, n_epochs=n_epochs, batch_size=batch_size, print_every=print_every)
+
+    # Plot the training curves and save them
+    train_curves(train = model.evals["train_acc"], valid = model.evals["valid_acc"], saveto=plot_file)
+
+    # Snapshot of evals, and global epoch
+    model.evals["global_epoch"] = model.global_epoch
+    obj2pickle(model.evals, evals_file)
+
+    print("DONE TRAINING")
