@@ -153,6 +153,10 @@ data["Y_valid"] = data["Y_train"][:n_valid]
 data["X_train"] = data["X_train"][n_valid:]
 data["Y_train"] = data["Y_train"][n_valid:]
 
+# Append id and label mapppings to the data
+data["id2label"] = id2label
+data["label2id"] = label2id
+
 # Information about data shapes
 print("DATA SHAPES")
 print("- X_train: ", data["X_train"].shape) # - X_train:  (2215, 32, 32, 3)
