@@ -1,73 +1,112 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
+import os
+import scipy
+
 
 # ==============================================================================
-#                                          GRID_OF_SAMPLE_IMAGES_FROM_EACH_CLASS
+#                                                        BATCH_OF_IMAGES_TO_GRID
 # ==============================================================================
-def sample_images_from_each_class(X, Y, num_per_class=5, seed=None):
-    """
-    Given a batch of images (stored as a numpy array), and an array of labels,
-    It creates a grid of images (randomly sampled), such that:
-        - Each row contains images for each class.
-        - Each column contains `num_per_class` randomly sampled images for
-          that particular class.
+def batch_of_images_to_grid(imgs, rows, cols):
+    """ Given a batch of images stored as a numpy array of shape:
+            [n_batch, img_height, img_width, n_channels]
+        it creates a grid of images of shape described in `rows` and `cols`.
+
     Args:
-        X: (numpy array)
-            Shape should be either:
-                - [n_batch, im_rows, im_cols]
+        imgs: (numpy array)
+            Shape should be:
                 - [n_batch, im_rows, im_cols, n_channels]
-        Y: (list or numpy array)
-            The class labels for each sample.
-        num_per_class:  (int)
-            The number of images to sample for each class.
-        param seed: (int)
-            Set the random seed.
+
+        rows: (int) How many rows of images to use
+        cols: (int) How many cols of images to use
+
     Returns: (numpy array)
-        The grid of images as one large image of either shape:
-            - [n_classes*im_cols, num_per_class*im_rows]
+        The grid of images as one large image of shape:
             - [n_classes*im_cols, num_per_class*im_rows, n_channels]
     """
     # TODO: have a resize option to rescale the individual sample images
     # Set the random seed if needed
-    assert len(X) == len(Y), "X, and Y should have same number of samples"
-    if seed is not None:
-        np.random.seed(seed=seed)
 
-    # Dimensions of the grid.
-    n_classes = max(Y)+1
-    im_shape = X[0].shape
-    im_width = im_shape[1]
-    im_height = im_shape[0]
-    if len(im_shape)>2:
-        n_channels = im_shape[2]
-        grid_shape = (im_height * n_classes, im_width * num_per_class, n_channels)
-    else:
-        grid_shape = (im_height * n_classes, im_width * num_per_class)
+    # TODO: Have a random shuffle option
+    # if seed is not None:
+    #     np.random.seed(seed=seed)
 
-    # Initialise the grid array
-    grid_array = np.zeros(grid_shape, dtype=X[0].dtype)
+    # Only use the number of images needed to fill grid
+    n_cells = (rows*cols)
+    imgs = imgs[:n_cells]
 
-    # For each class, sample num_per_class images and place them in grid
-    for class_i in range(n_classes):
-        available_pool = np.argwhere(np.squeeze(Y) == class_i).flatten()
-        if len(available_pool) > 0:
-            sample_indices = np.random.choice(available_pool, size=min(num_per_class, len(available_pool)), replace=False)
-        else:
-            # No samples available for this class
-            continue
+    n_batch, img_height, img_width, n_channels = imgs.shape
 
-        # Append to corresponding position on grid
-        for j, sample_index in enumerate(sample_indices):
-            # Skip column if there is not enough samples from for this class
-            if j >= len(available_pool):
-                break
-            row = im_height*class_i
-            col = im_width*j
+    # Handle case where there is not enough images in batch to fill grid
+    n_gap = n_cells - n_batch
+    imgs = np.pad(imgs, pad_width=[(0,n_gap),(0,0), (0,0), (0,0)], mode="constant", constant_values=0)
 
-            grid_array[row:row+im_height, col:col+im_width] = X[sample_index]
+    # Reshape into grid
+    grid = imgs.reshape(rows,cols,img_height,img_width,n_channels).swapaxes(1,2)
+    grid = grid.reshape(rows*img_height,cols*img_width,n_channels)
 
-    return grid_array
+    return grid
+
+
+# ==============================================================================
+#                                          GRID_OF_SAMPLE_IMAGES_FROM_EACH_CLASS
+# ==============================================================================
+def sample_images_from_each_class(X, Y, n_classes=25, n=5):
+    """ Given a batch of images (stored as a numpy array), and an array of
+        labels, It creates a grid of images such that:
+            - Each row contains images for each class.
+            - Each column contains the first `n` images for that class.
+
+    Args:
+        X: (numpy array)
+            Array containing batch of images. Shape should be:
+                - [n_batch, im_rows, im_cols, n_channels]
+        Y: (list or numpy array)
+            The class labels for each sample.
+        n_classes: (int, or None)(default=25)
+            The number of classes in the data.
+            If this value is `None`, then the number of classes will be
+            infered from the max val from Y.
+        n:  (int)(default=5)
+            The number of images to sample for each class.
+
+    Returns: (numpy array)
+        The grid of images as one large image of shape:
+            - [n_classes*im_cols, num_per_class*im_rows, n_channels]
+    """
+    # TODO: maybe add random sampling.
+    # TODO: Handle greyscale images with no channels dimension
+
+    cols = n
+    _, img_height, img_width, n_channels =  X.shape
+
+    # Infer the number of classes if not provided
+    if n_classes is None:
+        n_classes = Y.max()
+
+    # Initialize the grid
+    grid_shape = (0, img_width * (cols+1), n_channels)
+    grid = np.zeros(grid_shape, dtype=np.uint8)
+
+    # FOR EACH CLASS
+    for id in range(n_classes):
+        # Extract the images for the current class id
+        imgs = X[Y==id][:cols]
+        row = batch_of_images_to_grid(imgs, rows=1, cols=cols)
+
+        # Extract the label image - ignoring alpha channel
+        img_file = os.path.join("images", "{:02d}.png".format(id))
+        label_img = scipy.misc.imread(img_file)[:,:,:3] # Ignore the alpha chanel
+        label_img = scipy.misc.imresize(label_img, [img_height, img_width]) # resize
+
+        # Append row of samples to the grid
+        row2 = np.append(label_img, row, axis=1) # Append label image and samples
+        grid = np.append(grid, row2, axis=0)     # Append the row to the grid
+
+    return grid
+
+
 
 # ==============================================================================
 #                                                                   MPL_SHOW_IMG
