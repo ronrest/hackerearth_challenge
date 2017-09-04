@@ -3,4 +3,4 @@
 .ipynb_checkpoints/*
 snapshots/*
 models/*
-scratchpad.py
+scratchpad*.py
