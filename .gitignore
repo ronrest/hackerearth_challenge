@@ -2,3 +2,4 @@
 *.pickle
 .ipynb_checkpoints/*
 snapshots/*
+models/*
