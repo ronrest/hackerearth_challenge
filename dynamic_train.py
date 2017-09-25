@@ -7,7 +7,7 @@ import time
 
 from data import id2label, label2id, pickle2obj, obj2pickle, maybe_make_pardir
 from viz import train_curves
-from model_base import ClassifierModel, create_and_train_model
+from model_base import ClassifierModel
 
 from dynamic_data import create_data_dict
 from image_processing import random_transformations
@@ -120,6 +120,60 @@ aug_func = create_augmentation_func(
     noise=10
     )
 
+
+
+# ##############################################################################
+#                                                         CREATE AND TRAIN MODEL
+# ##############################################################################
+def create_and_train_model(model_name, logits_func, data, dynamic=False, alpha=0.01, l2=None, n_epochs=30, batch_size=128, print_every=None, overwrite=False, img_shape=None, augmentation_func=None):
+    # Create and Train Model
+    # snapshot_file = os.path.join("models", model_name, "snapshots/snapshot.chk")
+    # plot_file = os.path.join("models", model_name, "training_plot.png")
+    # evals_file = os.path.join("models", model_name, "evals.pickle")
+
+    print("\n"+("#"*70)+"\n"+"MODEL NAME = "+model_name+"\n"+("#"*70)+"\n")
+
+    # Check if the model already exists
+    model_dir = os.path.join("models", model_name)
+    if os.path.exists(model_dir):
+        template = ("="*70) +"\n"+("="*70) +"\n"+(" "*30)+"IMPORTANT!\n"+ ("-"*70)+"\nModel with this name already exists.\n{}\n\n"+("="*70)+"\n"+("="*70)+"\n"
+        if overwrite:
+            print(template.format("WARNING!!!: YOU ARE IN OVERWRITE MODE\nCompletely deleting the directory associated with the previous model"))
+            shutil.rmtree(model_dir)
+        else:
+            print(template.format("Attempting to re-use existing files"))
+
+    # Ensure the necessary file structures exist
+    # maybe_make_pardir(snapshot_file)
+    # maybe_make_pardir(plot_file)
+    # maybe_make_pardir(evals_file)
+
+    # Create model object
+    if dynamic:
+        assert img_shape is not None, "Need to feed image shape for dynamic option"
+        width, height = img_shape
+    else:
+        img_shape = list(data["X_train"].shape[1:3])
+    n_classes = len(data["id2label"])
+    model = ClassifierModel(name=model_name, img_shape=img_shape, n_channels=3, logits_func=logits_func, n_classes=n_classes, dynamic=dynamic, l2=l2)
+
+    # # Load the previsously saved evals
+    # if os.path.exists(model.evals_file):
+    #     print("relaoding evals data")
+    #     model.evals = pickle2obj(evals_file)
+    #     model.global_epoch = model.evals["global_epoch"]
+
+    # Train the model
+    model.train(data, alpha=alpha, n_epochs=n_epochs, batch_size=batch_size, print_every=print_every, augmentation_func=augmentation_func)
+
+    # # Plot the training curves and save them
+    # train_curves(train = model.evals["train_acc"], valid = model.evals["valid_acc"], saveto=plot_file)
+
+    # # Snapshot of evals, and global epoch
+    # model.evals["global_epoch"] = model.global_epoch
+    # obj2pickle(model.evals, evals_file)
+
+    print("DONE TRAINING")
 
 # TODO: Create confusion matrix to see common misclassificaions
 create_and_train_model("zobo_02", logits_func=my_architectureZ, data=data, dynamic=True, alpha=0.001, n_epochs=4, batch_size=32, print_every=10, overwrite=True, l2=None, img_shape=(40,40), augmentation_func=aug_func)
