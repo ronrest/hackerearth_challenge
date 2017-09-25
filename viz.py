@@ -138,24 +138,36 @@ def mpl_show_img(a, figsize=(15,10)):
     ax.get_xaxis().set_visible(False)  # Remove axis ticks
     plt.show()
 
+
 # ==============================================================================
 #                                                                   TRAIN_CURVES
 # ==============================================================================
-def train_curves(train, valid, saveto=None, label="Accuracy over time"):
+def train_curves(train, valid, saveto=None, title="Accuracy over time", ylab="accuracy", legend_pos="lower right"):
     """ Plots the training curves. If `saveto` is specified, it saves the
         the plot image to a file.
     """
     fig, ax = plt.subplots(figsize=(6, 4))
-    fig.suptitle("Accuracies over time", fontsize=15)
+    fig.suptitle(title, fontsize=15)
     ax.plot(train, color="#FF4F40",  label="train")
-    ax.plot(valid, color="#307EC7",  label="eval")
+    ax.plot(valid, color="#307EC7",  label="valid")
     ax.set_xlabel("epoch")
-    ax.set_ylabel("accuracy")
-    ax.legend(loc="lower right", title="", frameon=False,  fontsize=8)
+    ax.set_ylabel(ylab)
+
+    # Grid lines
+    ax.grid(True)
+    plt.minorticks_on()
+    plt.grid(b=True, which='major', color='#888888', linestyle='-')
+    plt.grid(b=True, which='minor', color='#AAAAAA', linestyle='-', alpha=0.2)
+
+    # Legend
+    ax.legend(loc=legend_pos, title="", frameon=False,  fontsize=8)
+
+    # Save or show
     if saveto is None:
         plt.show()
     else:
         fig.savefig(saveto)
+        plt.close()
 
 
 # ==============================================================================
