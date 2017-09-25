@@ -44,3 +44,36 @@ def my_architectureZ(X, n_classes, is_training, regularizer=None):
     return logits
 
 
+
+inception_v3_frozen_graph_file = "inception_v3_2016_08_28_frozen.pb"
+inception_v3_frozen_graph_file = "/home/ronny/TEMP/pretrained_models/tfslim/inception/inception_v3/graph/inception_v3_2016_08_28_frozen.pb"
+def inception_v3_FT_A(X, n_classes, is_training, regularizer=None):
+    x = tf.div(X, 255., name="scale")
+    he_init = tf.contrib.keras.initializers.he_normal()
+    relu = tf.nn.relu
+    dropout = 0.8
+    dropout_keep_prob = 1-dropout
+
+    with tf.variable_scope('preprocess') as scope:
+        x = tf.div(X, 255., name="scale")
+
+    architecture_arg_scope = tf.contrib.slim.nets.inception.inception_v3_arg_scope
+    with tf.contrib.framework.arg_scope(architecture_arg_scope()):
+        # LOAD GRAPH_DEF FILE
+        graph_file = inception_v3_frozen_graph_file
+        which_tensors=["InceptionV3/InceptionV3/Mixed_7c/concat_v2:0"] # 8x8x2048
+        trunk_ops = graph_from_graphdef_file(graph_file=graph_file, access_these=which_tensors, remap_input={"input:0": x})
+        trunk_final_conv = trunk_ops[0]
+
+        with tf.contrib.framework.arg_scope([tf.contrib.layers.batch_norm, tf.contrib.layers.dropout], is_training=is_training):
+            # Final pooling and prediction
+            with tf.variable_scope('head'):
+                kernel_size = [8,8]
+                net = tf.contrib.layers.avg_pool2d(trunk_final_conv, kernel_size, padding='VALID', scope='avg_pool')
+                # 1 x 1 x 2048
+                net = tf.contrib.layers.dropout(net, keep_prob=dropout_keep_prob, scope='dropout')
+                # 2048
+                logits = tf.contrib.layers.conv2d(net, n_classes, [1, 1], activation_fn=None, normalizer_fn=None, scope='conv_logits')
+                logits = tf.squeeze(logits, [1, 2], name='logits')
+
+    return logits
