@@ -144,5 +144,11 @@ def create_and_train_model(model_name, logits_func, data, dynamic=False, alpha=0
 
     print("DONE TRAINING")
 
+
+from architectures import inception_v3_FT_A
+
 # TODO: Create confusion matrix to see common misclassificaions
-create_and_train_model("zobo_02", logits_func=my_architectureZ, data=data, dynamic=True, alpha=0.001, n_epochs=4, batch_size=32, print_every=10, overwrite=True, l2=None, img_shape=(40,40), augmentation_func=aug_func)
+# create_and_train_model("zobo_02", logits_func=my_architectureZ, data=data, dynamic=True, alpha=0.001, n_epochs=1, batch_size=32, print_every=10, overwrite=True, l2=None, img_shape=(40,40), augmentation_func=aug_func)
+
+# INCEPTION MODEL
+create_and_train_model("iv3_ft_A_01", logits_func=inception_v3_FT_A, data=data, dynamic=True, alpha=0.001, n_epochs=1, batch_size=4, print_every=10, overwrite=False, l2=None, img_shape=(299,299), augmentation_func=aug_func)
