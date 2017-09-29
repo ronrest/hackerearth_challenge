@@ -4,3 +4,7 @@
 snapshots/*
 models/*
 scratchpad*.py
+aws.sh
+aws_efs_setup.sh
+update_remote_code.sh
+remote/*

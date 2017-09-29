@@ -1,6 +1,9 @@
 import numpy as np
+import matplotlib
+matplotlib.use('AGG')
 import matplotlib.pyplot as plt
 import seaborn as sns
+import PIL
 import os
 import scipy
 
@@ -124,6 +127,14 @@ def sample_images_from_each_class(X, Y, n_classes=25, n=5):
 
     return grid
 
+
+# ==============================================================================
+#                                                                       SHOW_IMG
+# ==============================================================================
+def show_img(a):
+    """Given a numpy array representing an image, view it"""
+    img = PIL.Image.fromarray(a)
+    img.show()
 
 
 # ==============================================================================

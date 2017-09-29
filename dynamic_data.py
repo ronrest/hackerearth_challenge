@@ -1,5 +1,9 @@
 """
 Dynamically loads images from file.
+
+
+Data zip file: https://he-s3.s3.amazonaws.com/media/hackathon/deep-learning-challenge-1/identify-the-objects/a0409a00-8-dataset_dp.zip
+
 """
 from __future__ import print_function, unicode_literals
 import os
@@ -14,6 +18,14 @@ id2label = ['beans', 'cake', 'candy', 'cereal', 'chips', 'chocolate', 'coffee',
     'oil', 'pasta', 'rice', 'soda', 'spices', 'sugar', 'tea',
     'tomatosauce', 'vinegar', 'water']
 label2id = {val:id for id,val in enumerate(id2label)}
+
+
+# ==============================================================================
+#                                                                       STR2FILE
+# ==============================================================================
+def str2file(s, file, mode="w"):
+    with open(file, mode=mode) as fileObj:
+        fileObj.write(s)
 
 
 # ==============================================================================

@@ -10,8 +10,7 @@ from data import id2label, label2id, pickle2obj, obj2pickle, maybe_make_pardir
 from viz import train_curves
 from base import ClassifierModel, create_and_train_model
 from model_base import graph_from_graphdef_file
-
-
+from pretrained_paths import paths_dict
 
 def my_architectureZ(X, n_classes, is_training, regularizer=None):
     # Initializers
@@ -44,10 +43,8 @@ def my_architectureZ(X, n_classes, is_training, regularizer=None):
     return logits
 
 
-
-inception_v3_frozen_graph_file = "inception_v3_2016_08_28_frozen.pb"
-inception_v3_frozen_graph_file = "/home/ronny/TEMP/pretrained_models/tfslim/inception/inception_v3/graph/inception_v3_2016_08_28_frozen.pb"
-def inception_v3_FT_A(X, n_classes, is_training, regularizer=None):
+inception_v3_frozen_graph_file = paths_dict["inception_v3_frozen"]
+def inception_v3_FT_B(X, n_classes, is_training, regularizer=None):
     x = tf.div(X, 255., name="scale")
     he_init = tf.contrib.keras.initializers.he_normal()
     relu = tf.nn.relu
@@ -77,3 +74,9 @@ def inception_v3_FT_A(X, n_classes, is_training, regularizer=None):
                 logits = tf.squeeze(logits, [1, 2], name='logits')
 
     return logits
+
+
+# Dictionary of architectures
+arc = {}
+arc["my_architectureZ"] = my_architectureZ
+arc["inception_v3_FT_B"] = inception_v3_FT_B

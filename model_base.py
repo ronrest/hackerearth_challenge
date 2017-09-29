@@ -16,12 +16,15 @@ import numpy as np
 import os
 import shutil
 import time
+
+# TODO: move these functions to dymamic data
 from data import maybe_make_pardir, pickle2obj, obj2pickle
 from viz import train_curves
 import pickle
 
 from dynamic_data import load_batch_of_images
 from image_processing import random_transformations
+from dynamic_data import str2file
 
 # ==============================================================================
 #                                                                    PRETTY_TIME
@@ -39,7 +42,7 @@ def pretty_time(t):
 # ##############################################################################
 # Depends on load_batch_of_images()
 class ClassifierModel(object):
-    def __init__(self, name, img_shape, n_channels=3, logits_func=None, n_classes=10, dynamic=False, l2=None):
+    def __init__(self, name, img_shape, n_channels=3, logits_func=None, n_classes=10, dynamic=False, l2=None, best_evals_metric="valid_acc"):
         """ Initializes a Classifier Class
             n_classes: (int)
             dynamic: (bool)(default=False)
@@ -52,14 +55,19 @@ class ClassifierModel(object):
         """
         self.n_classes = n_classes
         self.batch_size = 4
+        self.global_epoch = 0
+        self.best_evals_metric = best_evals_metric
 
         self.model_dir = os.path.join("models", name)
         self.snapshot_file = os.path.join(self.model_dir, "snapshots", "snapshot.chk")
+        self.best_snapshot_file = os.path.join(self.model_dir, "snapshots_best", "snapshot.chk")
         self.evals_file = os.path.join(self.model_dir, "evals.pickle")
+        self.best_score_file = os.path.join(self.model_dir, "best_score.txt")
+        self.train_status_file = os.path.join(self.model_dir, "train_status.txt")
+
         self.tensorboard_dir = os.path.join(self.model_dir, "tensorboard")
         # TODO: Keep a "best" snapshot
         self.create_directory_structure()
-
         self.initialize_evals_dict(["train_acc", "valid_acc", "train_loss", "valid_loss", "global_epoch"])
         self.global_epoch = self.evals["global_epoch"]
 
@@ -68,7 +76,6 @@ class ClassifierModel(object):
         self.n_channels = n_channels
         self.n_classes = n_classes
         self.dynamic = dynamic
-        self.global_epoch = 0
 
         if l2 is None:
             l2_scale = 0.0
@@ -116,8 +123,8 @@ class ClassifierModel(object):
                 with tf.control_dependencies(update_ops):
                     self.train_op = self.optimizer.minimize(self.loss, name="train_op")
 
-            # SAVER OPERATIONS - To save/restore snapshot weights
-            self.saver_ops()
+            # CREATE SAVER OPERATIONS - To save/restore snapshot weights
+            self.create_saver_ops()
 
             # # TENSORBOARD
             # self.summary_writer = tf.summary.FileWriter(os.path.join(self.model_dir, "tensorboard"), graph=self.graph)
@@ -132,6 +139,9 @@ class ClassifierModel(object):
             # Saver (for saving snapshots)
             self.saver = tf.train.Saver(name="saver")
 
+    def create_graph():
+        pass
+
     def body(self, X, n_classes, is_training):
         """Override this method in child classes.
            must return pre-activation logits of the output layer
@@ -140,7 +150,7 @@ class ClassifierModel(object):
         logits = tf.contrib.layers.fully_connected(x, n_classes, activation_fn=None)
         return logits
 
-    def saver_ops(self):
+    def create_saver_ops(self):
         """ Create operations to save/restore model weights """
         with tf.device('/cpu:0'): # prevent more than one thread doing file I/O
             # # Inception Saver
@@ -151,12 +161,14 @@ class ClassifierModel(object):
             # Main Saver
             main_vars = tf.contrib.framework.get_variables_to_restore(exclude=None)
             self.saver = tf.train.Saver(main_vars, name="saver")
+            # best_snapshot_file
 
     def create_directory_structure(self):
         """ Ensure the necessary directory structure exists for saving this model """
         dirs = [
             self.model_dir,
             os.path.join(self.model_dir, "snapshots"),
+            os.path.join(self.model_dir, "snapshots_best"),
             os.path.join(self.model_dir, "tensorboard"),
             ]
         for dir in dirs:
@@ -180,12 +192,16 @@ class ClassifierModel(object):
             self.evals["global_epoch"] = self.global_epoch
             pickle.dump(self.evals, fileObj, protocol=2) #py2.7 & 3.x compatible
 
-    def initialize_vars(self, session):
+    def initialize_vars(self, session, best=False):
         """ Override this if you set up custom savers """
-        if tf.train.checkpoint_exists(self.snapshot_file):
+        if best:
+            snapshot_file = self.best_snapshot_file
+        else:
+            snapshot_file = self.snapshot_file
+        if tf.train.checkpoint_exists(snapshot_file):
             try:
                 print("Restoring parameters from snapshot")
-                self.saver.restore(session, self.snapshot_file)
+                self.saver.restore(session, snapshot_file)
             except (tf.errors.InvalidArgumentError, tf.errors.NotFoundError) as e:
                 msg = "============================================================\n"\
                       "ERROR IN INITIALIZING VARIABLES FROM SNAPSHOTS FILE\n"\
@@ -208,12 +224,12 @@ class ClassifierModel(object):
             print("Initializing to new parameter values")
             session.run(tf.global_variables_initializer())
 
-    def save_snapshot_in_session(self, session):
+    def save_snapshot_in_session(self, session, file):
         """Given an open session, it saves a snapshot of the weights to file"""
         # Create the directory structure for parent directory of snapshot file
-        if not os.path.exists(os.path.dirname(self.snapshot_file)):
-            os.makedirs(os.path.dirname(self.snapshot_file))
-        self.saver.save(session, self.snapshot_file)
+        if not os.path.exists(os.path.dirname(file)):
+            os.makedirs(os.path.dirname(file))
+        self.saver.save(session, file)
 
     def shuffle_train_data(self, data):
         n_samples = len(data["Y_train"])
@@ -246,6 +262,7 @@ class ClassifierModel(object):
             t0 = time.time()
 
             try:
+                str2file("training", file=self.train_status_file)
                 # TODO: Use global epoch
                 for epoch in range(1, n_epochs+1):
                     self.global_epoch += 1
@@ -268,7 +285,7 @@ class ClassifierModel(object):
                             print("{}    Batch_loss: {}".format(pretty_time(time.time()-t0), loss))
 
                     # Save parameters after each epoch
-                    self.save_snapshot_in_session(sess)
+                    self.save_snapshot_in_session(sess, self.snapshot_file)
 
                     # Evaluate on full train and validation sets after each epoch
                     train_acc, train_loss = self.evaluate_in_session(data["X_train"][:1000], data["Y_train"][:1000], sess)
@@ -279,33 +296,63 @@ class ClassifierModel(object):
                     self.evals["valid_loss"].append(valid_loss)
                     self.save_evals_dict()
 
-                    # Print evaluations
-                    s = "TR ACC: {: 3.3f} VA ACC: {: 3.3f} TR LOSS: {: 3.5f} VA LOSS: {: 3.5f}\n"
-                    print(s.format(train_acc, valid_acc, train_loss, valid_loss))
+                    # If its the best model so far, save best snapshot
+                    is_best_so_far = self.evals[self.best_evals_metric][-1] >= max(self.evals[self.best_evals_metric])
+                    if is_best_so_far:
+                        self.save_snapshot_in_session(sess, self.best_snapshot_file)
+
+                    # Print evaluations (with asterix at end if it is best model so far)
+                    s = "TR ACC: {: 3.3f} VA ACC: {: 3.3f} TR LOSS: {: 3.5f} VA LOSS: {: 3.5f} {}\n"
+                    print(s.format(train_acc, valid_acc, train_loss, valid_loss, "*" if is_best_so_far else ""))
 
                     # # TRAIN CURVES
                     train_curves(train=self.evals["train_acc"], valid=self.evals["valid_acc"], saveto=os.path.join(self.model_dir, "accuracy.png"), title="Accuracy over time", ylab="Accuracy", legend_pos="lower right")
                     train_curves(train=self.evals["train_loss"], valid=self.evals["valid_loss"], saveto=os.path.join(self.model_dir, "loss.png"), title="Loss over time", ylab="loss", legend_pos="upper right")
 
                     # TODO: Visialize predictions.
-                    # TODO: save file with "best score" achieved
+
+                    str2file(str(max(self.evals[self.best_evals_metric])), file=self.best_score_file)
+                str2file("done", file=self.train_status_file)
 
             except KeyboardInterrupt as e:
                 print("Keyboard Interupt detected")
                 # TODO: Finish up gracefully. Maybe create recovery snapshots of model
+                str2file("interupted", file=self.train_status_file)
                 raise e
+            except:
+                str2file("crashed", file=self.train_status_file)
+                raise
 
-    def prediction(self, X):
+    def prediction(self, X, batch_size=32, verbose=True, best=True):
         """Given input X make a forward pass of the model to get predictions"""
-        with tf.Session(graph=self.graph) as sess:
-            self.initialize_vars(sess)
-            preds = sess.run(self.preds, feed_dict={self.X: X})
-            return preds.squeeze()
+        # Dimensions
+        n_samples = X.shape[0]
+        n_batches = int(np.ceil(n_samples/batch_size))
+        preds = np.zeros(n_samples, dtype=np.int32)
+        if verbose:
+            print("MAKING PREDICTIONS")
+            percent_interval=10
+            print_every = n_batches/percent_interval
+            percent = 0
 
-    def evaluate(self, X, Y, batch_size=32):
+        with tf.Session(graph=self.graph) as sess:
+            self.initialize_vars(sess, best=best)
+
+            # Make Predictions on mini batches
+            for i in range(n_batches):
+                X_batch = self.get_batch(i, batch_size=batch_size, X=X)
+                feed_dict = {self.X:X_batch, self.is_training:False}
+                batch_preds = sess.run(self.preds, feed_dict=feed_dict)
+                preds[batch_size*i: batch_size*(i+1)] = batch_preds.squeeze()
+
+                if verbose and (i+1)%print_every == 0:
+                    percent += percent_interval
+        return preds
+
+    def evaluate(self, X, Y, batch_size=32, best=False):
         """Given input X, and Labels Y, evaluate the accuracy of the model"""
         with tf.Session(graph=self.graph) as sess:
-            self.initialize_vars(sess)
+            self.initialize_vars(sess, best=best)
             return self.evaluate_in_session(X,Y, sess, batch_size=batch_size)
 
     def evaluate_in_session(self, X, Y, session, batch_size=32):
@@ -329,11 +376,6 @@ class ClassifierModel(object):
         accuracy = (preds.squeeze() == Y.squeeze()).mean()*100
         loss = loss / n_samples
         return accuracy, loss
-
-
-
-
-
 
 # ==============================================================================
 #                                                       GRAPH_FROM_GRAPHDEF_FILE
@@ -379,10 +421,10 @@ def graph_from_graphdef_file(graph_file, access_these, remap_input=None):
             graph_def = tf.GraphDef()
             graph_def.ParseFromString(file_obj.read())
 
-            # Extract particular operations/tensors
-            requested_ops = tf.import_graph_def(
-                graph_def,
-                name='',
-                return_elements=access_these,
-                input_map=remap_input)
+    # Extract particular operations/tensors
+    requested_ops = tf.import_graph_def(
+        graph_def,
+        name='',
+        return_elements=access_these,
+        input_map=remap_input)
     return requested_ops
