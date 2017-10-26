@@ -1,29 +1,21 @@
 """"
-UPDATED BASE WITH CHANGES THAT BREAK THE OLD API
+All this code taken from:
+https://github.com/ronrest/convenience_py/blob/master/ml/tf/image_classifier_class.py
 
 Contains the ClassifierModel class. Which contains all the
 boilerplate code necessary to Create a tensorlfow graph, and training
 operations.
-
-Also includes the create_and_train_model() convenience function that
-automates many of the useful steps for a full model creation, and
-training pipeline.
-
-See the docstring in train.py for how to make use of this in training a model.
 """
 import tensorflow as tf
 import numpy as np
 import os
 import shutil
 import time
-
-# TODO: move these functions to dymamic data
-from data import maybe_make_pardir, pickle2obj, obj2pickle
-from viz import train_curves
 import pickle
 
-from dynamic_data import load_batch_of_images
+from new_viz import train_curves
 from image_processing import random_transformations
+from dynamic_data import load_batch_of_images, maybe_make_pardir, pickle2obj, obj2pickle
 from dynamic_data import str2file
 
 # ==============================================================================
@@ -42,7 +34,7 @@ def pretty_time(t):
 # ##############################################################################
 # Depends on load_batch_of_images()
 class ClassifierModel(object):
-    def __init__(self, name, img_shape, n_channels=3, logits_func=None, n_classes=10, dynamic=False, l2=None, best_evals_metric="valid_acc"):
+    def __init__(self, name, img_shape, n_channels=3, n_classes=10, dynamic=False, l2=None, best_evals_metric="valid_acc"):
         """ Initializes a Classifier Class
             n_classes: (int)
             dynamic: (bool)(default=False)
@@ -57,6 +49,7 @@ class ClassifierModel(object):
         self.batch_size = 4
         self.global_epoch = 0
         self.best_evals_metric = best_evals_metric
+        self.l2 = l2
 
         self.model_dir = os.path.join("models", name)
         self.snapshot_file = os.path.join(self.model_dir, "snapshots", "snapshot.chk")
@@ -66,7 +59,15 @@ class ClassifierModel(object):
         self.train_status_file = os.path.join(self.model_dir, "train_status.txt")
 
         self.tensorboard_dir = os.path.join(self.model_dir, "tensorboard")
-        # TODO: Keep a "best" snapshot
+
+        # directories to create
+        self.dir_structure = [
+            self.model_dir,
+            os.path.join(self.model_dir, "snapshots"),
+            os.path.join(self.model_dir, "snapshots_best"),
+            os.path.join(self.model_dir, "tensorboard"),
+            ]
+
         self.create_directory_structure()
         self.initialize_evals_dict(["train_acc", "valid_acc", "train_loss", "valid_loss", "global_epoch"])
         self.global_epoch = self.evals["global_epoch"]
@@ -76,79 +77,93 @@ class ClassifierModel(object):
         self.n_channels = n_channels
         self.n_classes = n_classes
         self.dynamic = dynamic
+        self.create_graph()
 
-        if l2 is None:
+    def create_graph(self):
+        self.graph = tf.Graph()
+        with self.graph.as_default():
+            self.create_input_ops()
+            self.create_body_ops()
+            self.create_loss_ops()
+            self.create_optimization_ops()
+            self.create_saver_ops()
+            self.create_tensorboard_ops()
+
+    def create_input_ops(self):
+        # TODO: This handling of L2 is ugly, fix it.
+        if self.l2 is None:
             l2_scale = 0.0
         else:
             l2_scale = l2
 
-        self.graph = tf.Graph()
-        with self.graph.as_default():
-            # INPUTS
-            with tf.variable_scope("inputs"):
-                self.X = tf.placeholder(tf.float32, shape=(None, self.img_height, self.img_width, self.n_channels), name="X") # [batch, rows, cols, chanels]
-                self.Y = tf.placeholder(tf.int32, shape=[None], name="Y") # [batch]
-                self.alpha = tf.placeholder_with_default(0.001, shape=None, name="alpha")
-                self.is_training = tf.placeholder_with_default(False, shape=(), name="is_training")
-                self.l2_scale = tf.placeholder_with_default(l2_scale, shape=(), name="l2_scale")
+        with tf.variable_scope("inputs"):
+            self.X = tf.placeholder(tf.float32, shape=(None, self.img_height, self.img_width, self.n_channels), name="X") # [batch, rows, cols, chanels]
+            self.Y = tf.placeholder(tf.int32, shape=[None], name="Y") # [batch]
+            self.alpha = tf.placeholder_with_default(0.001, shape=None, name="alpha")
+            self.is_training = tf.placeholder_with_default(False, shape=(), name="is_training")
+            self.l2_scale = tf.placeholder_with_default(l2_scale, shape=(), name="l2_scale")
+            self.dropout = tf.placeholder_with_default(0.0, shape=None, name="dropout")
 
-            print(self.X.name, self.X.shape.as_list())
 
-            # TODO: Use arg_scopes instead of having to use these if then statements for regularization
-            if l2_scale > 0:
-                self.regularizer = tf.contrib.layers.l2_regularizer(scale=self.l2_scale)
-            else:
-                self.regularizer = None
-
-            # BODY
-            # self.logits = self.body(self.X, n_classes, self.is_training)
-            if l2 is None:
-                self.logits = logits_func(self.X, n_classes, self.is_training)
-            else:
-                self.logits = logits_func(self.X, n_classes=n_classes, is_training=self.is_training, regularizer=self.regularizer)
-
-            self.preds = tf.argmax(self.logits, axis=1, name="preds")
-
-            # LOSS - Sums all losses even Regularization losses automatically
-            with tf.variable_scope('loss') as scope:
-                unrolled_logits = tf.reshape(self.logits, (-1, n_classes))
-                unrolled_labels = tf.reshape(self.Y, (-1,))
-                tf.losses.sparse_softmax_cross_entropy(labels=unrolled_labels, logits=unrolled_logits, reduction="weighted_sum_by_nonzero_weights")
-                self.loss = tf.losses.get_total_loss()
-
-            # OPTIMIZATION - Also updates batchnorm operations automatically
-            with tf.variable_scope('opt') as scope:
-                self.optimizer = tf.train.AdamOptimizer(self.alpha, name="optimizer")
-                update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS) # allow batchnorm
-                with tf.control_dependencies(update_ops):
-                    self.train_op = self.optimizer.minimize(self.loss, name="train_op")
-
-            # CREATE SAVER OPERATIONS - To save/restore snapshot weights
-            self.create_saver_ops()
-
-            # # TENSORBOARD
-            # self.summary_writer = tf.summary.FileWriter(os.path.join(self.model_dir, "tensorboard"), graph=self.graph)
-            # self.summary_op = tf.summary.scalar(name="dummy", tensor=4)
-
-            # TENSORBOARD - To visialize the architecture
-            with tf.variable_scope('tensorboard') as scope:
-                self.summary_writer = tf.summary.FileWriter(self.tensorboard_dir, graph=self.graph)
-                self.dummy_summary = tf.summary.scalar(name="dummy", tensor=1)
-                #self.summary_op = tf.summary.merge_all()
-
-            # Saver (for saving snapshots)
-            self.saver = tf.train.Saver(name="saver")
-
-    def create_graph():
-        pass
-
-    def body(self, X, n_classes, is_training):
+    def create_body_ops(self):
         """Override this method in child classes.
            must return pre-activation logits of the output layer
+
+           Ops to make use of:
+               self.is_training
+               self.X
+               self.Y
+               self.alpha
+               self.dropout
+               self.l2_scale
+               self.l2
+               self.n_classes
         """
+        # TODO: This handling of L2 is ugly, fix it.
+        if self.l2 is None:
+            l2_scale = 0.0
+        else:
+            l2_scale = l2
+
+        # TODO: Use arg_scopes instead of having to use these if then statements for regularization
+        if self.l2_scale > 0.0:
+            self.regularizer = tf.contrib.layers.l2_regularizer(scale=self.l2_scale)
+        else:
+            self.regularizer = None
+
+        # default body graph. Override this.
+        # print(self.X.name, self.X.shape.as_list())
         x = tf.contrib.layers.flatten(X)
-        logits = tf.contrib.layers.fully_connected(x, n_classes, activation_fn=None)
-        return logits
+        self.logits = tf.contrib.layers.fully_connected(x, self.n_classes, activation_fn=None, name="logits")
+        self.preds = tf.argmax(self.logits, axis=1, name="preds")
+
+
+    def create_loss_ops(self):
+        # LOSS - Sums all losses even Regularization losses automatically
+        with tf.variable_scope('loss') as scope:
+            unrolled_logits = tf.reshape(self.logits, (-1, self.n_classes))
+            unrolled_labels = tf.reshape(self.Y, (-1,))
+            tf.losses.sparse_softmax_cross_entropy(labels=unrolled_labels, logits=unrolled_logits, reduction="weighted_sum_by_nonzero_weights")
+            self.loss = tf.losses.get_total_loss()
+
+    def create_optimization_ops(self):
+        # OPTIMIZATION - Also updates batchnorm operations automatically
+        with tf.variable_scope('opt') as scope:
+            self.optimizer = tf.train.AdamOptimizer(self.alpha, name="optimizer")
+            update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS) # allow batchnorm
+            with tf.control_dependencies(update_ops):
+                self.train_op = self.optimizer.minimize(self.loss, name="train_op")
+
+    def create_tensorboard_ops(self):
+        # # TENSORBOARD
+        # self.summary_writer = tf.summary.FileWriter(os.path.join(self.model_dir, "tensorboard"), graph=self.graph)
+        # self.summary_op = tf.summary.scalar(name="dummy", tensor=4)
+
+        # TENSORBOARD - To visialize the architecture
+        with tf.variable_scope('tensorboard') as scope:
+            self.summary_writer = tf.summary.FileWriter(self.tensorboard_dir, graph=self.graph)
+            self.dummy_summary = tf.summary.scalar(name="dummy", tensor=1)
+            #self.summary_op = tf.summary.merge_all()
 
     def create_saver_ops(self):
         """ Create operations to save/restore model weights """
@@ -165,13 +180,7 @@ class ClassifierModel(object):
 
     def create_directory_structure(self):
         """ Ensure the necessary directory structure exists for saving this model """
-        dirs = [
-            self.model_dir,
-            os.path.join(self.model_dir, "snapshots"),
-            os.path.join(self.model_dir, "snapshots_best"),
-            os.path.join(self.model_dir, "tensorboard"),
-            ]
-        for dir in dirs:
+        for dir in self.dir_structure:
             if not os.path.exists(dir):
                 os.makedirs(dir)
 
@@ -328,6 +337,8 @@ class ClassifierModel(object):
         # Dimensions
         n_samples = X.shape[0]
         n_batches = int(np.ceil(n_samples/batch_size))
+        print("DEBUG: {} samples for predictions".format(n_samples))
+        print("DEBUG: {} batches for predictions".format(n_batches))
         preds = np.zeros(n_samples, dtype=np.int32)
         if verbose:
             print("MAKING PREDICTIONS")

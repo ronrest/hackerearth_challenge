@@ -1,3 +1,7 @@
+"""
+ALL THIS CODE IN THIS FILE TAKEN FROM:
+https://github.com/ronrest/convenience_py/blob/master/ml/img/image_processing.py
+"""
 import PIL
 from PIL import ImageEnhance, Image, ImageFilter, ImageChops
 import PIL.ImageOps
@@ -345,7 +349,7 @@ def random_rotation(im, max=10, include_corners=True, resample=PIL.Image.NEAREST
 
 
 # ==============================================================================
-#                                   RANDOM_TRANSFORMATIONS_FOR_SEGMENTATION_DATA
+#                                   RANDOM_TRANSFORMATIONS
 # ==============================================================================
 def random_transformations(
     X,

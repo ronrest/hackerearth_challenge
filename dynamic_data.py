@@ -21,8 +21,59 @@ label2id = {val:id for id,val in enumerate(id2label)}
 
 
 # ==============================================================================
+#                                                                 MAYBE_MAKE_DIR
+# ==============================================================================
+# Code taken from: https://github.com/ronrest/convenience_py/blob/master/file/maybe_make_dir.py
+def maybe_make_dir(path):
+    """ Checks if a directory path exists on the system, if it does not, then
+        it creates that directory (and any parent directories needed to
+        create that directory)
+    """
+    if not os.path.exists(path):
+        os.makedirs(path)
+
+
+# ==============================================================================
+#                                                              MAYBE_MAKE_PARDIR
+# ==============================================================================
+# Code taken from: https://github.com/ronrest/convenience_py/blob/master/file/maybe_make_dir.py
+def maybe_make_pardir(file):
+    """ Takes a path to a file, and creates the necessary directory structure
+        on the system to ensure that the parent directory exists (if it does
+        not already exist)
+    """
+    pardir = os.path.dirname(file)
+    if pardir.strip() != "": # ensure pardir is not an empty string
+        if not os.path.exists(pardir):
+            os.makedirs(pardir)
+
+
+# ==============================================================================
+#                                                                     OBJ2PICKLE
+# ==============================================================================
+# Code taken from: https://github.com/ronrest/convenience_py/blob/master/file/pickle.py
+def obj2pickle(obj, filepath):
+    """ Saves a python object as a binary pickle file to the desired filepath"""
+    maybe_make_pardir(filepath) # Ensure parent director exists
+    with open(filepath, mode="wb") as fileObj:
+        pickle.dump(obj, fileObj, protocol=2)
+
+
+# ==============================================================================
+#                                                                     PICKLE2OBJ
+# ==============================================================================
+# Code taken from: https://github.com/ronrest/convenience_py/blob/master/file/pickle.py
+def pickle2obj(file):
+    """ Given a filepath to a pickle file it returns the python object inside"""
+    with open(file, mode = "rb") as fileObj:
+        obj = pickle.load(fileObj)
+    return obj
+
+
+# ==============================================================================
 #                                                                       STR2FILE
 # ==============================================================================
+# Code taken from : https://github.com/ronrest/convenience_py/blob/master/file/str2file.py
 def str2file(s, file, mode="w"):
     with open(file, mode=mode) as fileObj:
         fileObj.write(s)
@@ -84,13 +135,36 @@ def create_data_dict(datadir):
 
 
 # ==============================================================================
+#                                                               CREATE_DATA_DICT
+# ==============================================================================
+def create_prediction_files_list(csv_file, datadir):
+    """ Given a filepath to a CSV file with the image ids, and the path to
+        the SPECIFIC directory that contains the images you want to
+        do predictions on, it returns a
+        list of the full file paths to all the images:
+    """
+    print("Creating prediction files list")
+
+    # TEST FILES
+    files = np.genfromtxt(csv_file, delimiter=",", skip_header=1, dtype=str)
+    data = [os.path.join(datadir, filename+".png") for filename in files]
+    data = np.array(data, dtype=np.object)
+
+    print("- Done")
+    return data
+
+
+# ==============================================================================
 #                                                           LOAD_BATCH_OF_IMAGES
 # ==============================================================================
+# Code taken from: https://github.com/ronrest/convenience_py/blob/master/ml/img/load_images.py
 def load_batch_of_images(file_list, img_shape):
     """ Given a list of file images to load, it loads them as an array.
     Args:
         file_list:
         img_shape: (tuple of two ints)(width,height)
+    Return:
+        Numpy array of shape [n_images, img_shape[1], img_shape[0], n_channels]
     """
     n_channels = 3      # Number of channels to use
     n_samples = len(file_list)
